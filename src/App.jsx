@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "./App.css";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
+import { SpinnerCircular } from "spinners-react";
 
 function App() {
   const [searchValue, setSearchValue] = useState("");
@@ -10,22 +11,33 @@ function App() {
 
   //useeffect to get the IP address of the user
   useEffect(() => {
-    return async () => {
+    let isMounted = true;
+
+    const fetchData = async () => {
       try {
         const res = await fetch("https://api.ipify.org/?format=json");
         const data = await res.json();
         console.log(data.ip);
-        const res2 = await fetch(
-          `https://geo.ipify.org/api/v2/country?apiKey=at_3RyX5aT04WwPFYvw53RMRGsEHsGSM&ipAddress=${data.ip}`
-        );
-        let userIpAddresss = await res2.json();
 
-        setLoading(!isLoading);
-        setIpResult(userIpAddresss);
-        console.log(userIpAddresss);
+        const res2 = await fetch(
+          `https://geo.ipify.org/api/v2/country,city?apiKey=at_3RyX5aT04WwPFYvw53RMRGsEHsGSM&ipAddress=${data.ip}`
+        );
+        const userIpAddresss = await res2.json();
+
+        if (isMounted) {
+          setLoading((prevState) => !prevState.isLoading);
+          setIpResult(userIpAddresss);
+        }
       } catch (error) {
-        return new Error("Fetch Error", error);
+        // Throw the error to be caught by error boundaries or higher-level error handling
+        throw new Error("Fetch Error", error);
       }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -33,7 +45,7 @@ function App() {
   const fetchIpAddressDetails = async () => {
     try {
       const res = await fetch(
-        `https://geo.ipify.org/api/v2/country?apiKey=at_3RyX5aT04WwPFYvw53RMRGsEHsGSM&ipAddress=${searchValue}`
+        `https://geo.ipify.org/api/v2/country,city?apiKey=at_3RyX5aT04WwPFYvw53RMRGsEHsGSM&ipAddress=${searchValue}`
       );
       if (res.ok) {
         const IpDetails = await res.json();
@@ -88,7 +100,7 @@ function App() {
 
             <section className="top-[25%] h-2/3">
               <MapContainer
-                center={[51.505, -0.09]}
+                center={[ipResult.location.lat, ipResult.location.lng]}
                 zoom={13}
                 scrollWheelZoom={true}
               >
@@ -96,10 +108,10 @@ function App() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Marker position={[51.505, -0.09]}>
-                  <Popup>
-                    A pretty CSS3 popup. <br /> Easily customizable.
-                  </Popup>
+                <Marker
+                  position={[ipResult.location.lat, ipResult.location.lng]}
+                >
+                  <Popup>{ipResult.location.region}</Popup>
                 </Marker>
               </MapContainer>
             </section>
@@ -136,7 +148,9 @@ function App() {
           </section>
         </>
       ) : (
-        <p>Loading....</p>
+        <div className="absolute top-[50%] left-[50%]">
+          <SpinnerCircular />
+        </div>
       )}
     </>
   );
