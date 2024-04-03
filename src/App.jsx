@@ -29,7 +29,6 @@ function App() {
           setIpResult(userIpAddresss);
         }
       } catch (error) {
-        // Throw the error to be caught by error boundaries or higher-level error handling
         throw new Error("Fetch Error", error);
       }
     };
